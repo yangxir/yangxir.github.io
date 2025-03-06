@@ -6,7 +6,7 @@
   <link href="http://example.com/atom.xml" rel="self"/>
   
   <link href="http://example.com/"/>
-  <updated>2025-03-04T15:13:09.562Z</updated>
+  <updated>2025-03-06T15:43:33.071Z</updated>
   <id>http://example.com/</id>
   
   <author>
@@ -17,9 +17,39 @@
   <generator uri="https://hexo.io/">Hexo</generator>
   
   <entry>
+    <title>关系的「核心不满幽灵」：那些说不出口的嫌弃</title>
+    <link href="http://example.com/2025/03/07/relationship-reality/"/>
+    <id>http://example.com/2025/03/07/relationship-reality/</id>
+    <published>2025-03-06T15:37:00.000Z</published>
+    <updated>2025-03-06T15:43:33.071Z</updated>
+    
+    <content type="html"><![CDATA[<p>关系中那些说不出口的“真实嫌弃”，往往会披着生活琐事的外衣反复撕扯彼此。这种「核心不满的幽灵」确实在隐秘地操控着关系走向。我们可以从三个层面拆解这种困境：</p><hr><h3><span id="一-关系的双重账户系统">一、关系的「双重账户」系统</span></h3><p><strong>1. 表面账户</strong><br>争吵的琐事（妆容、家务、停车）就像零钱罐里的硬币，看似每一枚都不值钱，但持续投入的「情绪复利」会让关系负债表最终崩溃。</p><p><strong>2. 隐藏账户</strong><br>那些关于外貌、身高、社会价值的“嫌弃”才是真正的黄金储备。当一个人潜意识里觉得伴侣配不上自己时，会不自觉地通过挑剔细节来索取「补偿利息」——就像银行对低信用客户收取更高费率。</p><hr><h3><span id="二-好欺负背后的权力经济学">二、「好欺负」背后的权力经济学</span></h3><p>选择留在关系里未必因为爱，可能是某种隐形的<strong>权力套利</strong>：</p><ul><li><strong>情感对冲</strong>：用“忍受嫌弃”换取关系存续的安全感，避免成为主动破坏关系的“坏人”</li><li><strong>道德杠杆</strong>：积累对方的“过失清单”，为日后可能的背叛&#x2F;离开储备正当性筹码</li><li><strong>自我惩罚</strong>：潜意识里认为自己只配得到这样的关系，通过被轻视完成某种心理受虐仪式</li></ul><p>这种「痛苦舒适区」往往比未知的改变更让人上瘾。</p><hr><h3><span id="三-破局需要黑暗现实主义">三、破局需要「黑暗现实主义」</span></h3><ol><li><p><strong>承认欲望的合法性</strong><br>对颜值、身高、社会价值的在意并不可耻，这是生物本能与社会规训的共同作用。关键要区分：</p><ul><li><strong>可改变的嫌弃</strong>（穿搭审美、卫生习惯）</li><li><strong>不可改变的硬伤</strong>（骨相、原生家庭）</li></ul><p>前者可协商，后者需抉择。</p></li><li><p><strong>警惕「反向斯德哥尔摩」</strong><br>当你说“好欺负”时，本质上是在用受害者的弱势姿态实施情感控制——通过扮演被亏欠者，获得关系中的道德豁免权。</p></li><li><p><strong>进行「关系清算」</strong><br>拿出一张纸分栏写下：</p><ul><li><strong>我在忍受什么</strong>（具体事件+对应的核心不满）</li><li><strong>我在获取什么</strong>（经济支持、社会形象、情绪惯性）</li><li><strong>机会成本</strong>（错过的人、被压抑的自我）</li></ul><p>当第二栏的收益＜第三栏的代价时，就是该启动「止损程序」的时刻。</p></li></ol><hr><p>关系的残酷真相在于：<strong>我们最终选择的不是最爱的人，而是那个能让我们最大限度维持自我认知平衡的人</strong>。那些说不出口的嫌弃，本质上是对自己选择的不甘。</p><p>与其在“嫌弃-补偿”的循环里耗尽心力，不如直面那个最尖锐的问题：<strong>我是否愿意为当下的安全感，永远放弃对理想关系的想象？</strong> 这个答案，只能向自己的灵魂索取。</p>]]></content>
+    
+    
+      
+      
+    <summary type="html">&lt;p&gt;关系中那些说不出口的“真实嫌弃”，往往会披着生活琐事的外衣反复撕扯彼此。这种「核心不满的幽灵」确实在隐秘地操控着关系走向。我们可以从三个层面拆解这种困境：&lt;/p&gt;
+&lt;hr&gt;
+&lt;h3&gt;&lt;span id=&quot;一-关系的双重账户系统&quot;&gt;一、关系的「双重账户」系统&lt;/span&gt;&lt;/h</summary>
+      
+    
+    
+    
+    <category term="思考" scheme="http://example.com/categories/%E6%80%9D%E8%80%83/"/>
+    
+    
+    <category term="心理学" scheme="http://example.com/tags/%E5%BF%83%E7%90%86%E5%AD%A6/"/>
+    
+    <category term="关系" scheme="http://example.com/tags/%E5%85%B3%E7%B3%BB/"/>
+    
+    <category term="亲密关系" scheme="http://example.com/tags/%E4%BA%B2%E5%AF%86%E5%85%B3%E7%B3%BB/"/>
+    
+  </entry>
+  
+  <entry>
     <title>Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试</title>
-    <link href="http://example.com/2025/03/04/Ubuntu-22-04-%E6%90%AD%E5%BB%BA-FreeRADIUS-%E5%B9%B6%E4%BD%BF%E7%94%A8-EAP-TLS-%E8%BF%9B%E8%A1%8C%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95/"/>
-    <id>http://example.com/2025/03/04/Ubuntu-22-04-%E6%90%AD%E5%BB%BA-FreeRADIUS-%E5%B9%B6%E4%BD%BF%E7%94%A8-EAP-TLS-%E8%BF%9B%E8%A1%8C%E6%9C%AC%E5%9C%B0%E6%B5%8B%E8%AF%95/</id>
+    <link href="http://example.com/2025/03/04/ubuntu-setup-freeradius-eap-tls-test/"/>
+    <id>http://example.com/2025/03/04/ubuntu-setup-freeradius-eap-tls-test/</id>
     <published>2025-03-04T14:57:37.000Z</published>
     <updated>2025-03-04T15:13:09.562Z</updated>
     
@@ -48,8 +78,8 @@
   
   <entry>
     <title>RADIUS协议与酸汤鱼</title>
-    <link href="http://example.com/2025/03/04/RADIUS%E5%8D%8F%E8%AE%AE%E4%B8%8E%E9%85%B8%E6%B1%A4%E9%B1%BC/"/>
-    <id>http://example.com/2025/03/04/RADIUS%E5%8D%8F%E8%AE%AE%E4%B8%8E%E9%85%B8%E6%B1%A4%E9%B1%BC/</id>
+    <link href="http://example.com/2025/03/04/radius-protocol-and-sour-fish/"/>
+    <id>http://example.com/2025/03/04/radius-protocol-and-sour-fish/</id>
     <published>2025-03-03T15:00:00.000Z</published>
     <updated>2025-03-04T14:28:42.025Z</updated>
     
@@ -72,8 +102,8 @@
   
   <entry>
     <title>我的第一篇日记</title>
-    <link href="http://example.com/2025/02/24/%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E7%AF%87%E6%97%A5%E8%AE%B0/"/>
-    <id>http://example.com/2025/02/24/%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E7%AF%87%E6%97%A5%E8%AE%B0/</id>
+    <link href="http://example.com/2025/02/24/my-first-diary/"/>
+    <id>http://example.com/2025/02/24/my-first-diary/</id>
     <published>2025-02-24T06:00:00.000Z</published>
     <updated>2025-02-23T17:40:15.465Z</updated>
     
