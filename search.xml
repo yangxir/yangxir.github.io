@@ -4,6 +4,39 @@
   
     
     <entry>
+      <title>GitHub Pages Domain Binding &amp; Cloudflare Setup Guide</title>
+      <link href="/2025/03/09/GitHub-Pages-Domain-Binding-Cloudflare-Setup-Guide/"/>
+      <url>/2025/03/09/GitHub-Pages-Domain-Binding-Cloudflare-Setup-Guide/</url>
+      
+        <content type="html"><![CDATA[<h1><span id="github-pages-绑定自定义域名-amp-cloudflare-配置教程"><strong>GitHub Pages 绑定自定义域名 &amp; Cloudflare 配置教程</strong> 🚀</span></h1><p>本教程适用于 <strong>GitHub Pages 绑定自定义域名</strong>，并通过 <strong>Cloudflare 进行加速和 HTTPS 保护</strong>。</p><hr><h2><span id="1️⃣-购买域名-amp-设置-cloudflare"><strong>🔹 1️⃣ 购买域名 &amp; 设置 Cloudflare</strong></span></h2><h3><span id="11-购买域名"><strong>1.1 购买域名</strong></span></h3><p>可以在以下平台购买：</p><ul><li><strong>国际域名提供商</strong>：<a href="https://www.namecheap.com/">Namecheap</a>、<a href="https://domains.google/">Google Domains</a></li><li><strong>国内域名提供商</strong>：<a href="https://www.aliyun.com/">阿里云</a>、<a href="https://cloud.tencent.com/">腾讯云</a></li></ul><p>📌 <strong>示例：</strong> 用户购买了 <code>yangxirui.site</code> 作为自定义域名。</p><h4><span id="域名购买成功示例"><strong>📌 域名购买成功示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/buy_domain.png" alt="购买域名"></p><hr><h3><span id="12-添加域名到-cloudflare"><strong>1.2 添加域名到 Cloudflare</strong></span></h3><ol><li><strong>注册并登录 Cloudflare</strong>（<a href="https://dash.cloudflare.com/">https://dash.cloudflare.com</a>）</li><li><strong>点击 “Add a Site”</strong>，输入你的域名（例如 <code>yangxirui.site</code>）</li><li><strong>选择 “Free Plan”（免费计划）</strong></li><li><strong>等待 Cloudflare 扫描你的 DNS 记录</strong></li><li><strong>Cloudflare 提供两组 NS（DNS 服务器）</strong>，例如：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">arch.ns.cloudflare.com</span><br><span class="line">margaret.ns.cloudflare.com</span><br></pre></td></tr></table></figure></li><li><strong>进入你的域名提供商（腾讯云&#x2F;阿里云）</strong>，修改 <strong>DNS 服务器</strong> 为 Cloudflare 提供的 <strong>NS 记录</strong></li><li><strong>回到 Cloudflare，等待 DNS 服务器生效</strong>（通常 10-30 分钟）</li></ol><h4><span id="cloudflare-添加域名示例"><strong>📌 Cloudflare 添加域名示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/cloudflare_setting_1.png" alt="Cloudflare 添加域名"></p><h4><span id="cloudflare-提供-ns-服务器示例"><strong>📌 Cloudflare 提供 NS 服务器示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/cloudflare_DNS.png" alt="Cloudflare NS 服务器"></p><h4><span id="腾讯云修改-dns-服务器示例"><strong>📌 腾讯云修改 DNS 服务器示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/domain_dns.png" alt="腾讯云修改 DNS"></p><hr><h2><span id="2️⃣-绑定-github-pages-到域名"><strong>🔹 2️⃣ 绑定 GitHub Pages 到域名</strong></span></h2><h3><span id="21-在-cloudflare-配置-dns-解析"><strong>2.1 在 Cloudflare 配置 DNS 解析</strong></span></h3><ol><li><strong>进入 Cloudflare “DNS” 选项</strong></li><li><strong>点击 “Add record”（添加记录）</strong></li><li><strong>添加 CNAME 记录</strong>：<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Type: CNAME</span><br><span class="line">Name: blog</span><br><span class="line">Value: yangxir.github.io</span><br><span class="line">Proxy status: Proxied（橙色云朵 ✅）</span><br><span class="line">TTL: Auto</span><br></pre></td></tr></table></figure></li><li><strong>点击 “Save” 保存记录</strong></li></ol><h4><span id="cloudflare-dns-解析示例"><strong>📌 Cloudflare DNS 解析示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/cloudflare_setting_3.png" alt="Cloudflare DNS 解析"></p><hr><h3><span id="22-在-github-pages-绑定域名"><strong>2.2 在 GitHub Pages 绑定域名</strong></span></h3><ol><li><strong>进入 GitHub Pages 设置</strong><ul><li><strong>进入 GitHub 仓库</strong> 👉 <a href="https://github.com/%E4%BD%A0%E7%9A%84%E7%94%A8%E6%88%B7%E5%90%8D/%E4%BD%A0%E7%9A%84%E5%8D%9A%E5%AE%A2%E4%BB%93%E5%BA%93/settings/pages">https://github.com/你的用户名/你的博客仓库/settings/pages</a></li></ul></li><li><strong>在 “Custom Domain” 里输入你的域名</strong><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">blog.yangxirui.site  ##自己的</span><br></pre></td></tr></table></figure></li><li><strong>点击 “Save” 保存</strong></li><li><strong>等待 GitHub 检测，出现 ✅ “DNS check successful”</strong></li><li><strong>启用 “Enforce HTTPS”</strong><ul><li>如果 HTTPS 选项是灰色的，说明 GitHub 还在生成 SSL 证书，通常 10-30 分钟后会变成可用状态</li></ul></li></ol><h4><span id="github-pages-绑定成功示例"><strong>📌 GitHub Pages 绑定成功示例：</strong></span></h4><p><img src="/../source/images/github-pages-cloudflare/github_pages_1.png" alt="GitHub Pages 绑定"></p><hr><h2><span id="3️⃣-确保-cloudflare-ssl-证书正确"><strong>🔹 3️⃣ 确保 Cloudflare SSL 证书正确</strong></span></h2><ol><li><strong>进入 Cloudflare “SSL&#x2F;TLS” 设置</strong></li><li><strong>选择 “Full”（完全模式）</strong></li><li><strong>不要选择 “Flexible”</strong>（可能导致 GitHub HTTPS 失效）</li></ol><hr><h2><span id="4️⃣-测试-amp-检查"><strong>🔹 4️⃣ 测试 &amp; 检查</strong></span></h2><p>📌 <strong>访问你的博客地址</strong></p><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">http://blog.yangxirui.site   <span class="comment">##自己的</span></span><br><span class="line">https://blog.yangxirui.site  （如果 HTTPS 已生效）</span><br></pre></td></tr></table></figure><p>✅ <strong>成功访问说明绑定完成</strong><br>✅ <strong>如果 GitHub Pages 还不能启用 HTTPS，等 10-30 分钟再试</strong></p><hr><h2><span id="5️⃣-遇到问题"><strong>🔹 5️⃣ 遇到问题？</strong></span></h2><table><thead><tr><th><strong>问题</strong></th><th><strong>解决方案</strong></th></tr></thead><tbody><tr><td><strong>GitHub Pages 无法启用 HTTPS</strong></td><td>等待 10-30 分钟，GitHub 需要时间生成 SSL 证书</td></tr><tr><td><strong>Cloudflare 显示 Invalid Nameservers</strong></td><td>等待 DNS 服务器生效，最多 24 小时</td></tr><tr><td><strong>网站访问 403&#x2F;404</strong></td><td>确保 GitHub Pages 正常运行，并已发布</td></tr><tr><td><strong>国内访问仍然较慢</strong></td><td>在 Cloudflare 开启 “Caching”（缓存加速）</td></tr></tbody></table><hr><h2><span id="总结"><strong>🚀 总结</strong></span></h2><ul><li><strong>Cloudflare 加速 GitHub Pages</strong></li><li><strong>绑定自定义域名，提高访问体验</strong></li><li><strong>启用 Cloudflare + GitHub HTTPS，保证网站安全</strong></li><li><strong>国内用户访问更快，不受 GitHub 限制</strong></li></ul><p>现在，你的博客可以通过 <code>https://blog.yangxirui.site</code> 访问了！🎉🚀</p><p>💡 <strong>你可以收藏本教程，后续如果需要调整域名、CDN 或 HTTPS，可以随时参考！</strong> 😃</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> GitHub Pages </category>
+          
+          <category> Cloudflare </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> GitHub </tag>
+            
+            <tag> Cloudflare </tag>
+            
+            <tag> Custom Domain </tag>
+            
+            <tag> Hexo </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>关系的「核心不满幽灵」：那些说不出口的嫌弃</title>
       <link href="/2025/03/07/relationship-reality/"/>
       <url>/2025/03/07/relationship-reality/</url>
@@ -101,9 +134,9 @@
       
         <tags>
             
-            <tag> 日记 </tag>
-            
             <tag> Hexo </tag>
+            
+            <tag> 日记 </tag>
             
         </tags>
       
