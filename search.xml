@@ -4,6 +4,37 @@
   
     
     <entry>
+      <title>为什么我连不上 WiFi？原来他们只准备了 256 个 IP！从 eduroam 事件看 DHCP 与子网掩码</title>
+      <link href="/2025/03/27/eduroam-dhcp/"/>
+      <url>/2025/03/27/eduroam-dhcp/</url>
+      
+        <content type="html"><![CDATA[<p>最近在参加 <strong>电子信息通信学会2025</strong> 的时候，发现 eduroam WiFi 根本连不上！</p><p>一开始我以为是设备的问题，直到刷到了这条推文 👇</p><blockquote><p>L2 是连着的，但 IP 地址下不来……DHCP 地址池是不是枯竭了？</p></blockquote><p><img src="/../images/eduroam-dhcp/tweet-example.jpg"> <!-- 替换为你本地 tweet 截图 --></p><p>后来去现场打听才知道，<strong>他们只准备了 256 个 IP 地址，现场却来了上千人！</strong></p><p>于是我画了几张图，从零讲清楚：WiFi 连不上网，到底是哪里出了问题👇</p><hr><h2><span id="一-dhcp连接-wifi-后其实还差一步">🧭 一、DHCP：连接 WiFi 后，其实还差一步</span></h2><p>当你连上 eduroam 的 AP（Access Point），只是完成了物理连接。</p><p><strong>还需要通过 DHCP 获取 IP 地址，才能真正上网。</strong></p><p><img src="/../images/eduroam-dhcp/dhcp-4step.png"></p><p>DHCP 的四个步骤（DORA）：</p><ol><li><strong>Discover</strong>：广播请求 ——「谁能分我个 IP 地址？」</li><li><strong>Offer</strong>：DHCP 服务器回应 ——「来，给你 192.168.0.100」</li><li><strong>Request</strong>：客户端回应 ——「好，我要这个」</li><li><strong>Ack</strong>：服务器确认 ——「OK，同时告诉你 DNS、网关等参数」</li></ol><p>🧨 问题就出在 —— <strong>IP 分完了，没有多的给你了。</strong></p><hr><h2><span id="二-你连的是-eduroam但-ip-是现场发的">🌐 二、你连的是 eduroam，但 IP 是“现场发的”</span></h2><p>很多人以为 eduroam 是全世界统一的“云 WiFi”，其实并不是。</p><p><img src="/../images/eduroam-dhcp/network-eduroam.png"></p><ul><li><strong>认证（是否能连）</strong>：由 RADIUS 完成，确实是全球统一身份</li><li><strong>IP 分配（能不能上网）</strong>：每个会场、学校、实验室<strong>本地 DHCP</strong>决定</li></ul><p>所以，只要现场 DHCP 地址池太小，连了也白连！</p><hr><h2><span id="三-ip-地址长啥样学一手二进制基础">🧠 三、IP 地址长啥样？学一手二进制基础</span></h2><p><img src="/../images/eduroam-dhcp/ip-structure.png"></p><p>IPv4 地址是 32 位，分为 4 段，每段 8 位（1 byte）：</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">192.168.0.1 → 二进制是：11000000.10101000.00000000.00000001</span><br></pre></td></tr></table></figure><ul><li>左边的部分决定<strong>网络编号</strong></li><li>右边的部分决定<strong>主机编号</strong></li></ul><p>所以我们说 <code>/24</code>、<code>/22</code>，其实就是：多少位用于“主机”。</p><hr><h2><span id="四-子网掩码决定你能分多少-ip关键点">📌 四、子网掩码决定你能分多少 IP（关键点）</span></h2><p>这次 eduroam 配置的是 <code>/24</code> 网段，我们来看看对比👇</p><p><img src="/../images/eduroam-dhcp/subnet-compare.png"></p><table><thead><tr><th>子网段</th><th>子网掩码</th><th>可分配 IP 数</th><th>适用场景</th></tr></thead><tbody><tr><td>&#x2F;24</td><td>255.255.255.0</td><td>254 个</td><td>家用路由、小型会议</td></tr><tr><td>&#x2F;23</td><td>255.255.254.0</td><td>510 个</td><td>教室、公司网络</td></tr><tr><td>&#x2F;22</td><td>255.255.252.0</td><td>1022 个</td><td>展会、大型会议</td></tr></tbody></table><p>📌 主办方用了 <code>/24</code>，意味着：<strong>最多只能同时服务 254 台设备！</strong></p><hr><h2><span id="总结">✅ 总结</span></h2><p>你以为连不上 WiFi 是因为信号差？<br>其实是 —— <strong>你根本就没“分到号”</strong></p><h3><span id="eduroam-是连上了radius-认证通过">✅ eduroam 是连上了（RADIUS 认证通过）</span></h3><h3><span id="dhcp-没给你-ip你等于没上网">❌ DHCP 没给你 IP，你等于没上网</span></h3><hr><h2><span id="后记如何避免这种惨剧">📬 后记：如何避免这种惨剧？</span></h2><p>如果你是网络管理员，该怎么防止这种场面再次发生？</p><ul><li>合理规划子网段（比如用 <code>/22</code>）</li><li>配置多个 DHCP Server 分区处理</li><li>配合 VLAN &#x2F; VLAN pooling 做负载均衡</li><li>使用 IPv6 减缓 IPv4 枯竭问题</li><li>实时监控连接数 + 地址池占用率</li></ul><hr><blockquote><p>💬 想了解更多 DHCP 地址冲突、WiFi 多层认证机制、RADIUS 配置优化？欢迎留言或者关注我后续更新！</p></blockquote><hr>]]></content>
+      
+      
+      <categories>
+          
+          <category> 技术科普 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 网络原理 </tag>
+            
+            <tag> DHCP </tag>
+            
+            <tag> 子网掩码 </tag>
+            
+            <tag> eduroam </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>求职与读博抉择总结</title>
       <link href="/2025/03/09/career-or-phd-choice/"/>
       <url>/2025/03/09/career-or-phd-choice/</url>
