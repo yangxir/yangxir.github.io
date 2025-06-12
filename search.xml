@@ -4,6 +4,39 @@
   
     
     <entry>
+      <title>RadSecProxy 配置与调试笔记</title>
+      <link href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/"/>
+      <url>/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/</url>
+      
+        <content type="html"><![CDATA[<p>RadSecProxy 是一个开源的 RADIUS 中继工具，支持 UDP、TCP、TLS（即 RadSec），非常适合搭建中间代理、调试 TLS 安全连接等场景。本文记录了我在构建以下实验拓扑时的完整配置流程与踩坑记录。</p><h2><span id="实验拓扑">🧭 实验拓扑</span></h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">proxy1（FreeRADIUS，UDP，192.168.8.195）</span><br><span class="line">⇩ UDP（传统 RADIUS）</span><br><span class="line">proxy2（RadSecProxy，192.168.8.231）</span><br><span class="line">⇩ TLS（RadSec）</span><br><span class="line">proxy3（FreeRADIUS，TLS监听，192.168.8.228）</span><br><span class="line"></span><br></pre></td></tr></table></figure><h2><span id="️-radsecproxy-配置proxy2">🛠️ RadSecProxy 配置（proxy2）</span></h2><p>路径：<code>/usr/local/etc/radsecproxy.conf</code></p><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">tls myradsec &#123;</span><br><span class="line">    CACertificateFile /etc/radsecproxy/certs/ca.pem</span><br><span class="line">    CertificateFile /etc/radsecproxy/certs/client.pem</span><br><span class="line">    CertificateKeyFile /etc/radsecproxy/certs/client.key</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">listen udp &#123;</span><br><span class="line">    <span class="attr">type</span>    = UDP</span><br><span class="line">    <span class="attr">host</span>    = <span class="number">0.0</span>.<span class="number">0.0</span></span><br><span class="line">    <span class="attr">port</span>    = <span class="number">1812</span></span><br><span class="line">    <span class="attr">clients</span> = udpclients</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">client udpclients &#123;</span><br><span class="line">    <span class="attr">secret</span> = testing123</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">server tlsserver &#123;</span><br><span class="line">    <span class="attr">type</span>   = TLS</span><br><span class="line">    <span class="attr">host</span>   = <span class="number">192.168</span>.<span class="number">8.228</span></span><br><span class="line">    <span class="attr">port</span>   = <span class="number">2083</span></span><br><span class="line">    <span class="attr">tls</span>    = myradsec</span><br><span class="line">    <span class="attr">secret</span> = testing123</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><h2><span id="启动与错误调试">🧪 启动与错误调试</span></h2><p>RadSecProxy 启动命令：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> /usr/local/sbin/radsecproxy -f -c /usr/local/etc/radsecproxy.conf -d 3</span><br></pre></td></tr></table></figure><h3><span id="示例输出">示例输出：</span></h3><p><img src="/../images/radsecproxy/radsec.png" alt="RadSecProxy TLS连接日志"></p><blockquote><p>Proxy2 (RadSecProxy) 成功建立 TLS 连接并转发</p></blockquote><h2><span id="freeradius-端-tls-握手日志">🧪 FreeRADIUS 端 TLS 握手日志</span></h2><p>FreeRADIUS 输出如下：</p><p><img src="/../images/radsecproxy/freeradius-tls.png" alt="FreeRADIUS TLS握手细节"></p><blockquote><p>可以看出 TLS 握手进行了多个阶段，包括 CertificateRequest、EncryptedExtensions、Finished 等，但最后停在了 <code>TLSv1.3 early data</code> 阶段，说明 FreeRADIUS 正在等待客户端进一步的数据。</p></blockquote><hr><h2><span id="小结与排查建议">🔍 小结与排查建议</span></h2><ol><li>检查证书链是否正确，RadSecProxy 需要完整的 CA + Client 证书。</li><li>确认 FreeRADIUS 监听 2083 的配置与 TLS 模块启用情况。</li><li>双方都应使用 TLSv1.3 或兼容版本，必要时尝试降低为 TLSv1.2。</li><li>使用 <code>openssl s_client -connect 192.168.8.228:2083 -cert client.pem -key client.key -CAfile ca.pem</code> 手动测试证书和握手行为。</li></ol><hr><h3><span id="实验成果总结">✅ 实验成果总结</span></h3><ul><li>✔️ Proxy1 成功发送 UDP RADIUS 请求；</li><li>✔️ Proxy2 成功转为 TLS，并连接 Proxy3；</li><li>✔️ TLS 证书认证与握手无误；</li><li>✔️ Proxy3 成功返回 Access-Accept；</li></ul><p>🎉 <strong>整个 UDP → TLS RADIUS 转发链路完全打通！</strong></p><hr><h3><span id="推荐阅读">📚 推荐阅读</span></h3><ul><li><a href="https://datatracker.ietf.org/doc/html/rfc6614">RFC 6614 - RADIUS over TLS</a></li><li><a href="https://radsecproxy.github.io/">RadSecProxy 官方文档</a></li><li><a href="https://wiki.freeradius.org/guide/TLS">FreeRADIUS TLS 配置手册</a></li></ul><hr><h3><span id="后续预告">🚀 后续预告</span></h3><p>如果你正在研究 <strong>Wi-Fi 联邦漫游认证</strong>（如 <em>eduroam</em>），<strong>RadSecProxy 是一项非常值得掌握的实用技能</strong>。</p><p>👍 欢迎点赞、收藏并关注本博客。<br>📡 后续我会分享：</p><ul><li>多 Proxy 中继设计；</li><li>多跳认证路径优化；</li><li>分布式路径评分与容错切换方案。</li></ul><p>敬请期待！</p><hr><blockquote><p>本文同步发布于知乎专栏：<a href="https://zhuanlan.zhihu.com/p/1916544942949512002">RadSecProxy 配置与调试笔记</a></p></blockquote><hr>]]></content>
+      
+      
+      <categories>
+          
+          <category> 网络技术 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> RadSecProxy </tag>
+            
+            <tag> RADIUS </tag>
+            
+            <tag> TLS </tag>
+            
+            <tag> 网络配置 </tag>
+            
+            <tag> 实验笔记 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>FreeRADIUS 3.0.26 → 3.2.7 升级实战手册</title>
       <link href="/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/"/>
       <url>/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/</url>
