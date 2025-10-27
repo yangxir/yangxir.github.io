@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="[&quot;zh-CN&quot;,&quot;en&quot;,&quot;default&quot;]" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案 | Yxr的Hexo博客</title><meta name="author" content="Yxr"><meta name="copyright" content="Yxr"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="一篇记录 FreeRADIUS 从 3.0.26 升级到 3.2.7 的完整过程，含 systemd 服务重建与端口恢复。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案">
+<meta property="og:url" content="http://example.com/2025/10/27/freeradius-upgrade-md/index.html">
+<meta property="og:site_name" content="Yxr的Hexo博客">
+<meta property="og:description" content="一篇记录 FreeRADIUS 从 3.0.26 升级到 3.2.7 的完整过程，含 systemd 服务重建与端口恢复。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-10-27T13:00:00.000Z">
+<meta property="article:modified_time" content="2025-10-27T14:21:38.982Z">
+<meta property="article:author" content="Yxr">
+<meta property="article:tag" content="RADIUS">
+<meta property="article:tag" content="FreeRADIUS">
+<meta property="article:tag" content="EAP-TLS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案",
+  "url": "http://example.com/2025/10/27/freeradius-upgrade-md/",
+  "image": "http://example.com/img/butterfly-icon.png",
+  "datePublished": "2025-10-27T13:00:00.000Z",
+  "dateModified": "2025-10-27T14:21:38.982Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Yxr",
+      "url": "http://example.com/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/favicon.png"><link rel="canonical" href="http://example.com/2025/10/27/freeradius-upgrade-md/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Failed',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"><link rel="alternate" href="/atom.xml" title="Yxr的Hexo博客" type="application/atom+xml">
+</head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Yxr的Hexo博客</span></a><a class="nav-page-title" href="/"><span class="site-name">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-10-27T13:00:00.000Z" title="发表于 2025-10-27 22:00:00">2025-10-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-10-27T14:21:38.982Z" title="更新于 2025-10-27 23:21:38">2025-10-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%9E%E9%AA%8C/">网络实验</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>如果你的目标是用新版（3.2.7）彻底替换旧版（3.0.26），而不是两个版本同时运行，那么直接关掉旧版，让新版接管，是最简单高效的办法。<br>这篇文章讲的是纯升级：旧版下线，新版接管标准端口。</p>
+<hr>
+<h2><span id="为什么要关掉旧版">为什么要关掉旧版？</span></h2><ul>
+<li>避免端口冲突：新版直接用标准端口 1812&#x2F;1813，无需用其他临时端口。  </li>
+<li>管理更简单：只保留一个 systemd 服务，避免混淆。  </li>
+<li>配置更干净：没有冗余服务文件，没有多余进程。</li>
+</ul>
+<hr>
+<h2><span id="四步完成-freeradius-版本替换">四步完成 FreeRADIUS 版本替换</span></h2><h3><span id="第-1-步彻底停止并禁用旧版服务">🧩 第 1 步：彻底停止并禁用旧版服务</span></h3><p>确保旧版不会再运行，也不会开机自启：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 停止旧版</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl stop freeradius</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用旧版</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">disable</span> freeradius</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>如果你的旧版服务名不是 <code>freeradius</code>，请替换成正确的名字。</p>
+</blockquote>
+<hr>
+<h3><span id="️-第-2-步恢复新版的标准端口推荐">⚙️ 第 2 步：恢复新版的标准端口（推荐）</span></h3><p>如果你之前为了共存改过端口，现在可以改回：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> nano /usr/local/etc/raddb/radiusd.conf</span><br></pre></td></tr></table></figure>
+
+<p>找到：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 2812   <span class="comment"># 这是我自己改的</span></span><br></pre></td></tr></table></figure>
+
+<p>改成：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 1812</span><br></pre></td></tr></table></figure>
+
+<p>同理，把：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 2813   <span class="comment"># 这是我自己改的</span></span><br></pre></td></tr></table></figure>
+
+<p>改成：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 1813</span><br></pre></td></tr></table></figure>
+
+<p>保存退出。</p>
+<hr>
+<h3><span id="第-3-步创建唯一的-systemd-服务">🧱 第 3 步：创建唯一的 systemd 服务</span></h3><p>删除旧的临时服务文件（如果有）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> <span class="built_in">rm</span> /etc/systemd/system/freeradius-old.service</span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">rm</span> /etc/systemd/system/freeradius-new.service</span><br></pre></td></tr></table></figure>
+
+<p>创建新版的服务文件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> nano /etc/systemd/system/freeradius.service</span><br></pre></td></tr></table></figure>
+
+<p>写入：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=FreeRADIUS <span class="number">3.2</span>.<span class="number">7</span> Daemon</span><br><span class="line"><span class="attr">After</span>=network-<span class="literal">on</span>line.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=forking</span><br><span class="line"><span class="attr">User</span>=root</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/sbin/radiusd -d /usr/local/etc/raddb  <span class="comment"># 这里是你自己的 3.2.7 目录</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3><span id="第-4-步启动并设为开机自启">🚀 第 4 步：启动并设为开机自启</span></h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> systemctl daemon-reload</span><br><span class="line"><span class="built_in">sudo</span> systemctl start freeradius</span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> freeradius</span><br></pre></td></tr></table></figure>
+
+<p>检查状态：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> systemctl status freeradius</span><br></pre></td></tr></table></figure>
+
+<p>如果看到：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">active (running) - FreeRADIUS 3.2.7 Daemon</span><br></pre></td></tr></table></figure>
+
+<p>就代表升级成功，新版已经接管系统。</p>
+<hr>
+<h2><span id="升级完成后的状态">升级完成后的状态</span></h2><p>✅ 旧版完全停用<br>✅ 新版占用标准端口<br>✅ 管理指令统一（systemctl start&#x2F;stop&#x2F;status freeradius）<br>✅ 系统配置更干净  </p>
+<hr>
+<p>这样，FreeRADIUS 环境就是单一版本、标准化管理、无冲突的状态，后续维护会轻松很多。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Yxr</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2025/10/27/freeradius-upgrade-md/">http://example.com/2025/10/27/freeradius-upgrade-md/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">Yxr的Hexo博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/RADIUS/">RADIUS</a><a class="post-meta__tags" href="/tags/FreeRADIUS/">FreeRADIUS</a><a class="post-meta__tags" href="/tags/EAP-TLS/">EAP-TLS</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/" title="RadSecProxy 配置与调试笔记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">RadSecProxy 配置与调试笔记</div></div><div class="info-2"><div class="info-item-1">RadSecProxy 是一个开源的 RADIUS 中继工具，支持 UDP、TCP、TLS（即 RadSec），非常适合搭建中间代理、调试 TLS 安全连接等场景。本文记录了我在构建以下实验拓扑时的完整配置流程与踩坑记录。 🧭 实验拓扑1234567proxy1（FreeRADIUS，UDP，192.168.8.195）⇩ UDP（传统 RADIUS）proxy2（RadSecProxy，192.168.8.231）⇩ TLS（RadSec）proxy3（FreeRADIUS，TLS监听，192.168.8.228）  🛠️ RadSecProxy 配置（proxy2）路径：/usr/local/etc/radsecproxy.conf 123456789101112131415161718192021222324tls myradsec &#123;    CACertificateFile /etc/radsecproxy/certs/ca.pem    CertificateFile /etc/radsecproxy/certs/client.pem   ...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2025/03/04/ubuntu-setup-freeradius-eap-tls-test/" title="Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-03-04</div><div class="info-item-2">Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试</div></div><div class="info-2"><div class="info-item-1">Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试（eapol_test）在本教程中，我们将使用 Ubuntu 22.04 搭建 FreeRADIUS 服务器，并使用 EAP-TLS 进行本地测试。测试工具选用 eapol_test（WPA Supplicant 的测试工具）。  1️⃣ 安装 FreeRADIUS 服务器首先，确保你的系统是 Ubuntu 22.04（其他的也可以） 并更新软件包： 1sudo apt update &amp;&amp; sudo apt upgrade -y  然后，安装 FreeRADIUS： 1sudo apt install freeradius -y 安装完成后，检查 FreeRADIUS 是否正确安装： 1freeradius -v 输出类似： 1FreeRADIUS Version 3.0.26   2️⃣ 生成 EAP-TLS 认证所需的证书FreeRADIUS 需要 CA（根证书）、服务器证书 和 客户端证书 来进行 EAP-TLS 认证。我们可以使用 FreeRADIUS 提供的...</div></div></div></a><a class="pagination-related" href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/" title="RadSecProxy 配置与调试笔记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-06-12</div><div class="info-item-2">RadSecProxy 配置与调试笔记</div></div><div class="info-2"><div class="info-item-1">RadSecProxy 是一个开源的 RADIUS 中继工具，支持 UDP、TCP、TLS（即 RadSec），非常适合搭建中间代理、调试 TLS 安全连接等场景。本文记录了我在构建以下实验拓扑时的完整配置流程与踩坑记录。 🧭 实验拓扑1234567proxy1（FreeRADIUS，UDP，192.168.8.195）⇩ UDP（传统 RADIUS）proxy2（RadSecProxy，192.168.8.231）⇩ TLS（RadSec）proxy3（FreeRADIUS，TLS监听，192.168.8.228）  🛠️ RadSecProxy 配置（proxy2）路径：/usr/local/etc/radsecproxy.conf 123456789101112131415161718192021222324tls myradsec &#123;    CACertificateFile /etc/radsecproxy/certs/ca.pem    CertificateFile /etc/radsecproxy/certs/client.pem   ...</div></div></div></a><a class="pagination-related" href="/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/" title="FreeRADIUS 3.0.26 → 3.2.7 升级实战手册"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-06-07</div><div class="info-item-2">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册</div></div><div class="info-2"><div class="info-item-1">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册适用环境：Ubuntu 22.04 LTS  目标说明  在不影响现有系统的前提下，测试和部署 FreeRADIUS 的新版本。 不卸载旧版，以便随时回滚或对比测试。 从源码编译新版以启用所有需要的功能模块，例如 Redis 和 SQL。 使新版能通过 systemd 管理，实现自动启动。    0. 准备工作在编译前需安装基础编译工具和模块依赖。 1234sudo apt updatesudo apt install -y build-essential git pkg-config \  libssl-dev libtalloc-dev libpcap-dev libsystemd-dev \  libjson-c-dev libhiredis-dev libpq-dev  说明：  libhiredis-dev 是 Redis 支持模块 rlm_redis 的依赖。 libpq-dev 是 PostgreSQL 支持模块 rlm_sql_postgresql 的依赖。   1. 暂停旧版 FreeRADIUS...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> Comments</span></div></div><div class="comment-wrap"><div><div id="giscus-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Yxr</div><div class="author-info-description">欢迎来我这</div><div class="site-data"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">44</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">15</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/yangxir"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/yangxir" target="_blank" title="GitHub"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yangxirui9@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a><a class="social-icon" href="https://x.com/Yang_xxr" target="_blank" title="Twitter"><i class="fab fa-twitter" style="color: #1DA1F2;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">情報は武器、WiFiは俺の魂… 一个小小的喜欢wifi的人</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text">为什么要关掉旧版？</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">2.</span> <span class="toc-text">四步完成 FreeRADIUS 版本替换</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link"><span class="toc-number">2.1.</span> <span class="toc-text">🧩 第 1 步：彻底停止并禁用旧版服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link"><span class="toc-number">2.2.</span> <span class="toc-text">⚙️ 第 2 步：恢复新版的标准端口（推荐）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link"><span class="toc-number">2.3.</span> <span class="toc-text">🧱 第 3 步：创建唯一的 systemd 服务</span></a></li><li class="toc-item toc-level-3"><a class="toc-link"><span class="toc-number">2.4.</span> <span class="toc-text">🚀 第 4 步：启动并设为开机自启</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">3.</span> <span class="toc-text">升级完成后的状态</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Posts</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/10/27/freeradius-upgrade-md/" title="用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</a><time datetime="2025-10-27T13:00:00.000Z" title="Created 2025-10-27 22:00:00">2025-10-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/" title="RadSecProxy 配置与调试笔记">RadSecProxy 配置与调试笔记</a><time datetime="2025-06-12T11:00:00.000Z" title="Created 2025-06-12 20:00:00">2025-06-12</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/" title="FreeRADIUS 3.0.26 → 3.2.7 升级实战手册">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册</a><time datetime="2025-06-07T12:00:00.000Z" title="Created 2025-06-07 21:00:00">2025-06-07</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/05/22/research-philosophy-reflection/" title="抽象不是起点，是走到深处后的自然结果 —— 一封回信引发的研究思考">抽象不是起点，是走到深处后的自然结果 —— 一封回信引发的研究思考</a><time datetime="2025-05-22T13:00:00.000Z" title="Created 2025-05-22 22:00:00">2025-05-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/05/12/first-paper-no-ccf/" title="我不知道这是 C 类会议的时候，反而最投入">我不知道这是 C 类会议的时候，反而最投入</a><time datetime="2025-05-11T15:00:00.000Z" title="Created 2025-05-12 00:00:00">2025-05-12</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2025 By Yxr</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.3</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const getGiscusTheme = theme => theme === 'dark' ? 'dark' : 'light'
+
+  const createScriptElement = config => {
+    const ele = document.createElement('script')
+    Object.entries(config).forEach(([key, value]) => {
+      ele.setAttribute(key, value)
+    })
+    return ele
+  }
+
+  const loadGiscus = (el = document, key) => {
+    const mappingConfig = isShuoshuo
+      ? { 'data-mapping': 'specific', 'data-term': key }
+      : { 'data-mapping': (option && option['data-mapping']) || 'pathname' }
+
+    const giscusConfig = {
+      src: 'https://giscus.app/client.js',
+      'data-repo': 'yangxir/yangxir.github.io',
+      'data-repo-id': 'R_kgDON-PRXw',
+      'data-category-id': 'DIC_kwDON-PRX84CnjbM',
+      'data-theme': getGiscusTheme(document.documentElement.getAttribute('data-theme')),
+      'data-reactions-enabled': '1',
+      crossorigin: 'anonymous',
+      async: true,
+      ...option,
+      ...mappingConfig
+    }
+
+    const scriptElement = createScriptElement(giscusConfig)
+
+    el.querySelector('#giscus-wrap').appendChild(scriptElement)
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyGiscus = () => {
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const changeGiscusTheme = theme => {
+    const iframe = document.querySelector('#giscus-wrap iframe')
+    if (iframe) {
+      const message = {
+        giscus: {
+          setConfig: {
+            theme: getGiscusTheme(theme)
+          }
+        }
+      }
+      iframe.contentWindow.postMessage(message, 'https://giscus.app')
+    }
+  }
+
+  btf.addGlobalFn('themeChange', changeGiscusTheme, 'giscus')
+
+  if (isShuoshuo) {
+    'Giscus' === 'Giscus'
+      ? window.shuoshuoComment = { loadComment: loadGiscus }
+      : window.loadOtherComment = loadGiscus
+    return
+  }
+
+  if ('Giscus' === 'Giscus' || !false) {
+    if (false) btf.loadComment(document.getElementById('giscus-wrap'), loadGiscus)
+    else loadGiscus()
+  } else {
+    window.loadOtherComment = loadGiscus
+  }
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

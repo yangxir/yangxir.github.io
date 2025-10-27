@@ -4,6 +4,35 @@
   
     
     <entry>
+      <title>用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</title>
+      <link href="/2025/10/27/freeradius-upgrade-md/"/>
+      <url>/2025/10/27/freeradius-upgrade-md/</url>
+      
+        <content type="html"><![CDATA[<p>如果你的目标是用新版（3.2.7）彻底替换旧版（3.0.26），而不是两个版本同时运行，那么直接关掉旧版，让新版接管，是最简单高效的办法。<br>这篇文章讲的是纯升级：旧版下线，新版接管标准端口。</p><hr><h2><span id="为什么要关掉旧版">为什么要关掉旧版？</span></h2><ul><li>避免端口冲突：新版直接用标准端口 1812&#x2F;1813，无需用其他临时端口。  </li><li>管理更简单：只保留一个 systemd 服务，避免混淆。  </li><li>配置更干净：没有冗余服务文件，没有多余进程。</li></ul><hr><h2><span id="四步完成-freeradius-版本替换">四步完成 FreeRADIUS 版本替换</span></h2><h3><span id="第-1-步彻底停止并禁用旧版服务">🧩 第 1 步：彻底停止并禁用旧版服务</span></h3><p>确保旧版不会再运行，也不会开机自启：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 停止旧版</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl stop freeradius</span><br><span class="line"></span><br><span class="line"><span class="comment"># 禁用旧版</span></span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">disable</span> freeradius</span><br></pre></td></tr></table></figure><blockquote><p>如果你的旧版服务名不是 <code>freeradius</code>，请替换成正确的名字。</p></blockquote><hr><h3><span id="️-第-2-步恢复新版的标准端口推荐">⚙️ 第 2 步：恢复新版的标准端口（推荐）</span></h3><p>如果你之前为了共存改过端口，现在可以改回：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> nano /usr/local/etc/raddb/radiusd.conf</span><br></pre></td></tr></table></figure><p>找到：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 2812   <span class="comment"># 这是我自己改的</span></span><br></pre></td></tr></table></figure><p>改成：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 1812</span><br></pre></td></tr></table></figure><p>同理，把：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 2813   <span class="comment"># 这是我自己改的</span></span><br></pre></td></tr></table></figure><p>改成：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">port = 1813</span><br></pre></td></tr></table></figure><p>保存退出。</p><hr><h3><span id="第-3-步创建唯一的-systemd-服务">🧱 第 3 步：创建唯一的 systemd 服务</span></h3><p>删除旧的临时服务文件（如果有）：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> <span class="built_in">rm</span> /etc/systemd/system/freeradius-old.service</span><br><span class="line"><span class="built_in">sudo</span> <span class="built_in">rm</span> /etc/systemd/system/freeradius-new.service</span><br></pre></td></tr></table></figure><p>创建新版的服务文件：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> nano /etc/systemd/system/freeradius.service</span><br></pre></td></tr></table></figure><p>写入：</p><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=FreeRADIUS <span class="number">3.2</span>.<span class="number">7</span> Daemon</span><br><span class="line"><span class="attr">After</span>=network-<span class="literal">on</span>line.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=forking</span><br><span class="line"><span class="attr">User</span>=root</span><br><span class="line"><span class="attr">ExecStart</span>=/usr/local/sbin/radiusd -d /usr/local/etc/raddb  <span class="comment"># 这里是你自己的 3.2.7 目录</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure><hr><h3><span id="第-4-步启动并设为开机自启">🚀 第 4 步：启动并设为开机自启</span></h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> systemctl daemon-reload</span><br><span class="line"><span class="built_in">sudo</span> systemctl start freeradius</span><br><span class="line"><span class="built_in">sudo</span> systemctl <span class="built_in">enable</span> freeradius</span><br></pre></td></tr></table></figure><p>检查状态：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> systemctl status freeradius</span><br></pre></td></tr></table></figure><p>如果看到：</p><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">active (running) - FreeRADIUS 3.2.7 Daemon</span><br></pre></td></tr></table></figure><p>就代表升级成功，新版已经接管系统。</p><hr><h2><span id="升级完成后的状态">升级完成后的状态</span></h2><p>✅ 旧版完全停用<br>✅ 新版占用标准端口<br>✅ 管理指令统一（systemctl start&#x2F;stop&#x2F;status freeradius）<br>✅ 系统配置更干净  </p><hr><p>这样，FreeRADIUS 环境就是单一版本、标准化管理、无冲突的状态，后续维护会轻松很多。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 网络实验 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> RADIUS </tag>
+            
+            <tag> FreeRADIUS </tag>
+            
+            <tag> EAP-TLS </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>RadSecProxy 配置与调试笔记</title>
       <link href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/"/>
       <url>/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/</url>
