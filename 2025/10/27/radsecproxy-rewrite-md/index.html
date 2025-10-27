@@ -1,0 +1,420 @@
+<!DOCTYPE html><html lang="[&quot;zh-CN&quot;,&quot;en&quot;,&quot;default&quot;]" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践 | Yxr的Hexo博客</title><meta name="author" content="Yxr"><meta name="copyright" content="Yxr"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="RadSecProxy 的 rewrite 模块是一种轻量级规则引擎，用于在代理层修改或删除 RADIUS 属性。本文记录 rewriteIn&#x2F;rewriteOut 的用法与分目录配置结构。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践">
+<meta property="og:url" content="http://example.com/2025/10/27/radsecproxy-rewrite-md/index.html">
+<meta property="og:site_name" content="Yxr的Hexo博客">
+<meta property="og:description" content="RadSecProxy 的 rewrite 模块是一种轻量级规则引擎，用于在代理层修改或删除 RADIUS 属性。本文记录 rewriteIn&#x2F;rewriteOut 的用法与分目录配置结构。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-10-27T14:00:00.000Z">
+<meta property="article:modified_time" content="2025-10-27T14:26:10.800Z">
+<meta property="article:author" content="Yxr">
+<meta property="article:tag" content="RadSecProxy">
+<meta property="article:tag" content="RADIUS">
+<meta property="article:tag" content="FreeRADIUS">
+<meta property="article:tag" content="EAP-TLS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践",
+  "url": "http://example.com/2025/10/27/radsecproxy-rewrite-md/",
+  "image": "http://example.com/img/butterfly-icon.png",
+  "datePublished": "2025-10-27T14:00:00.000Z",
+  "dateModified": "2025-10-27T14:26:10.800Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Yxr",
+      "url": "http://example.com/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/favicon.png"><link rel="canonical" href="http://example.com/2025/10/27/radsecproxy-rewrite-md/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: 'Copy Successful',
+    error: 'Copy Failed',
+    noSupport: 'Browser Not Supported'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: 'Just now',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: 'Load More'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"><link rel="alternate" href="/atom.xml" title="Yxr的Hexo博客" type="application/atom+xml">
+</head><body><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Yxr的Hexo博客</span></a><a class="nav-page-title" href="/"><span class="site-name">RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践</span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-10-27T14:00:00.000Z" title="发表于 2025-10-27 23:00:00">2025-10-27</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-10-27T14:26:10.800Z" title="更新于 2025-10-27 23:26:10">2025-10-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E7%BD%91%E7%BB%9C%E5%AE%9E%E9%AA%8C/">网络实验</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>RadSecProxy 的 <strong>rewrite 模块</strong> 是一个轻量级规则引擎，可以在代理层修改或删除 RADIUS 属性（AVP），常用于给用户名补上 realm、删除不需要的属性等。</p>
+<p>最近在做多层 RADIUS&#x2F;RadSec Proxy 实验时，重新研究了 RadSecProxy 的 rewrite 模块。<br>本文记录我在 Ubuntu 环境下的配置结构、rewriteIn &#x2F; rewriteOut 的使用方式，以及官方支持的指令说明。<br>这篇文章既是笔记，也希望对做 FreeRADIUS + RadSecProxy 结合实验的同学有帮助。</p>
+<hr>
+<h2><span id="一-目录结构模块化配置">📁 一、目录结构：模块化配置</span></h2><p>RadSecProxy 默认只有一个 <code>radsecproxy.conf</code>，但如果实验节点较多，建议改成分文件夹结构，这样更方便维护。</p>
+<p>我的目录结构如下 👇：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">/usr/local/etc/</span><br><span class="line">├── radsecproxy.conf</span><br><span class="line">├── radsecproxy.d/</span><br><span class="line">│   ├── 00-logging.conf</span><br><span class="line">│   ├── 05-rewrite.conf</span><br><span class="line">│   ├── 10-listen.conf</span><br><span class="line">│   ├── 20-tls.conf</span><br><span class="line">│   ├── 30-clients.conf</span><br><span class="line">│   ├── 40-radius-a.conf</span><br><span class="line">│   ├── 41-radius-b.conf</span><br><span class="line">│   └── 50-realms.conf</span><br><span class="line">└── start-radsec.sh</span><br></pre></td></tr></table></figure>
+
+<p>主配置文件只保留核心内容：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /usr/local/etc/radsecproxy.conf</span></span><br><span class="line">include radsecproxy.d/*.conf</span><br></pre></td></tr></table></figure>
+
+<p>✅ <strong>好处：</strong></p>
+<ul>
+<li>类似 FreeRADIUS 的结构，按功能分块；</li>
+<li>修改单个节点（如 <code>40-radius-a.conf</code>）时更直观；</li>
+<li>容易在多机器环境下同步或版本控制。</li>
+</ul>
+<hr>
+<h2><span id="️-二-rewrite-模块的用途">✉️ 二、rewrite 模块的用途</span></h2><p>rewrite 是 RadSecProxy 的轻量级规则引擎，可以在代理层修改或删除 RADIUS 属性（AVP）。<br>常用于：</p>
+<ul>
+<li>给用户名补上 realm；</li>
+<li>删除不需要的属性；</li>
+<li>在上行包中添加实验标识（如 Route-ID）。</li>
+</ul>
+<p>rewrite 模块支持两个方向：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>触发方向</th>
+<th>常见用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RewriteIn</td>
+<td>收到下游包时</td>
+<td>修改或补齐属性（例如 User-Name）</td>
+</tr>
+<tr>
+<td>RewriteOut</td>
+<td>发往上游包时</td>
+<td>添加额外字段或诊断标识</td>
+</tr>
+</tbody></table>
+<hr>
+<h2><span id="️-三-rewrite-文件示例">⚙️ 三、rewrite 文件示例</span></h2><p>我将 rewrite 规则单独放在：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/usr/local/etc/radsecproxy.d/05-rewrite.conf</span><br></pre></td></tr></table></figure>
+
+<p>内容如下：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 如果 User-Name 中没有 @，自动补上 realm</span></span><br><span class="line">rewrite add_realm &#123;</span><br><span class="line">    ModifyAttribute User-Name:/^(<span class="section">[^@]</span>+)$/\1@edu.test/</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在发往上游的包中添加调试标识</span></span><br><span class="line">rewrite add_diagnostic &#123;</span><br><span class="line">    AddAttribute Reply-Message:<span class="attr">proxy</span>=gotolab-radius-test</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在对应配置文件中启用：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># /usr/local/etc/radsecproxy.d/30-clients.conf</span></span><br><span class="line">client radius-a &#123;</span><br><span class="line">    type udp</span><br><span class="line">    host 192.168.8.2195</span><br><span class="line">    secret testing123</span><br><span class="line">    RewriteIn add_realm</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment"># /usr/local/etc/radsecproxy.d/40-radius-a.conf</span></span><br><span class="line">server radius-a &#123;</span><br><span class="line">    type tls</span><br><span class="line">    host 192.168.8.228</span><br><span class="line">    secret rasdecproxy123456578</span><br><span class="line">    RewriteOut add_diagnostic</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2><span id="四-rewritein-与-rewriteout-的区别">🧠 四、rewriteIn 与 rewriteOut 的区别</span></h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>rewriteIn</th>
+<th>rewriteOut</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>执行时机</td>
+<td>收到下游的 Access-Request 时</td>
+<td>发往上游服务器时</td>
+</tr>
+<tr>
+<td>修改方向</td>
+<td>入站（incoming）</td>
+<td>出站（outgoing）</td>
+</tr>
+<tr>
+<td>可修改属性</td>
+<td>普通 RADIUS AVP</td>
+<td>普通 RADIUS AVP</td>
+</tr>
+<tr>
+<td>不可操作</td>
+<td>EAP-Message（二进制内容）</td>
+<td>同左</td>
+</tr>
+<tr>
+<td>是否可判别 Accept&#x2F;Reject</td>
+<td>❌ 无法区分响应类型</td>
+<td>❌ 无法区分响应类型</td>
+</tr>
+</tbody></table>
+<p>⚠️ rewrite 无法识别返回包类型（Accept &#x2F; Reject），它只基于“包方向”工作。<br>如果需要按结果做判断，可在 FreeRADIUS 侧添加自定义 AVP，例如 <code>My-Result</code>。</p>
+<hr>
+<h2><span id="五-rewrite-模块官方指令一览2025-最新版">🔧 五、rewrite 模块官方指令一览（2025 最新版）</span></h2><p>以下为 RadSecProxy 官方支持的 rewrite 指令（参见文末链接）：</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>RemoveAttribute attribute</td>
+<td>删除指定属性（例如 User-Name）</td>
+</tr>
+<tr>
+<td>RemoveVendorAttribute vendor[:subattribute]</td>
+<td>删除厂商属性或其子属性</td>
+</tr>
+<tr>
+<td>ModifyAttribute attribute:&#x2F;regex&#x2F;replace&#x2F;</td>
+<td>用正则替换普通属性值</td>
+</tr>
+<tr>
+<td>ModifyVendorAttribute vendor:subattribute:&#x2F;regex&#x2F;replace&#x2F;</td>
+<td>用正则替换厂商属性值</td>
+</tr>
+<tr>
+<td>AddAttribute attribute:value</td>
+<td>添加普通属性</td>
+</tr>
+<tr>
+<td>AddVendorAttribute vendor:subattribute:value</td>
+<td>添加厂商属性</td>
+</tr>
+<tr>
+<td>SupplementAttribute attribute:value</td>
+<td>如果属性不存在则添加</td>
+</tr>
+<tr>
+<td>SupplementVendorAttribute vendor:subattribute:value</td>
+<td>如果厂商属性不存在则添加</td>
+</tr>
+<tr>
+<td>WhitelistMode on&#x2F;off</td>
+<td>开启白名单模式（其余属性会被删除）</td>
+</tr>
+<tr>
+<td>WhitelistAttribute attribute</td>
+<td>白名单保留普通属性</td>
+</tr>
+<tr>
+<td>WhitelistVendorAttribute vendor[:subattribute]</td>
+<td>白名单保留厂商属性</td>
+</tr>
+</tbody></table>
+<p>在 <code>client</code> &#x2F; <code>server</code> 块中启用：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RewriteIn  &lt;rewrite-name&gt;</span><br><span class="line">RewriteOut &lt;rewrite-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>⚠️ 旧语法 <code>Rewrite &lt;rewrite-name&gt;</code> 已被废弃（deprecated），建议使用新写法。</p>
+<hr>
+<h2><span id="六-rewrite-的限制与调试技巧">🧩 六、rewrite 的限制与调试技巧</span></h2><p><strong>限制：</strong></p>
+<ul>
+<li>不能直接修改 EAP-Message；</li>
+<li>不支持 FreeRADIUS 式条件（if &#x2F; else &#x2F; expr）；</li>
+<li>rewrite 的执行顺序是静态绑定；</li>
+<li>无法区分 Access-Accept &#x2F; Reject；</li>
+<li>所有同名属性都会被匹配。</li>
+</ul>
+<p><strong>调试技巧：</strong></p>
+<ul>
+<li><p>把日志级别设为 4 或更高：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">LogLevel 4</span><br><span class="line">LogDestination stderr</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>启动时加 <code>-f</code> 参数：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">radsecproxy -f -d 4</span><br></pre></td></tr></table></figure></li>
+</ul>
+<p>可以在日志中看到 rewrite 执行的匹配、添加和替换行为。</p>
+<hr>
+<h2><span id="七-实践经验与建议">💬 七、实践经验与建议</span></h2><p>🧩 推荐分目录结构（<code>radsecproxy.d/</code>）管理配置；<br>⚙️ rewrite 仅用于静态规则，逻辑判断放 FreeRADIUS；<br>🔄 rewriteOut 可添加路径标识，方便多层代理实验；<br>🧠 生产环境建议关闭 DebugLevel，避免性能影响；<br>🚫 rewrite 不支持 Lua、Python 或 Redis 调用，如需动态逻辑可转交上游 RADIUS。</p>
+<hr>
+<h2><span id="八-总结">✨ 八、总结</span></h2><p>RadSecProxy 的 rewrite 模块虽然不如 FreeRADIUS 的 unlang 灵活，<br>但它轻量、稳定，非常适合在 TLS Proxy 层进行轻量改写与属性清洗。<br>配合模块化目录结构，可以让多节点实验更清晰、更可维护。</p>
+<p>我目前的用法是：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">rewrite 层负责静态加工</span><br><span class="line">FreeRADIUS 层负责动态逻辑与日志分析</span><br></pre></td></tr></table></figure>
+
+<p>这种分层设计，在 Wi-Fi 联邦认证系统或分布式 Proxy 环境中尤其高效。</p>
+<hr>
+<h2><span id="参考资料">📌 参考资料</span></h2><ul>
+<li><a target="_blank" rel="noopener" href="https://radsecproxy.github.io/">Radsecproxy-Configuration Options</a>  </li>
+<li><a target="_blank" rel="noopener" href="https://packages.debian.org/sid/radsecproxy">RadSecProxy 1.6.8 Example Config (Debian)</a>  </li>
+<li><a target="_blank" rel="noopener" href="https://manpages.ubuntu.com/manpages/jammy/man5/radsecproxy.conf.5.html">Ubuntu manpages – radsecproxy.conf(5)</a></li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Yxr</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2025/10/27/radsecproxy-rewrite-md/">http://example.com/2025/10/27/radsecproxy-rewrite-md/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://example.com" target="_blank">Yxr的Hexo博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/RadSecProxy/">RadSecProxy</a><a class="post-meta__tags" href="/tags/RADIUS/">RADIUS</a><a class="post-meta__tags" href="/tags/FreeRADIUS/">FreeRADIUS</a><a class="post-meta__tags" href="/tags/EAP-TLS/">EAP-TLS</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2025/10/27/freeradius-upgrade-md/" title="用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</div></div><div class="info-2"><div class="info-item-1">如果你的目标是用新版（3.2.7）彻底替换旧版（3.0.26），而不是两个版本同时运行，那么直接关掉旧版，让新版接管，是最简单高效的办法。这篇文章讲的是纯升级：旧版下线，新版接管标准端口。  为什么要关掉旧版？ 避免端口冲突：新版直接用标准端口 1812&#x2F;1813，无需用其他临时端口。   管理更简单：只保留一个 systemd 服务，避免混淆。   配置更干净：没有冗余服务文件，没有多余进程。   四步完成 FreeRADIUS 版本替换🧩 第 1 步：彻底停止并禁用旧版服务确保旧版不会再运行，也不会开机自启： 12345# 停止旧版sudo systemctl stop freeradius# 禁用旧版sudo systemctl disable freeradius   如果你的旧版服务名不是 freeradius，请替换成正确的名字。   ⚙️ 第 2 步：恢复新版的标准端口（推荐）如果你之前为了共存改过端口，现在可以改回： 1sudo nano /usr/local/etc/raddb/radiusd.conf  找到： 1port = 2812   #...</div></div></div></a><a class="pagination-related" href="/2025/10/28/radsecproxy-dpd-dynamic-md/" title="用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」</div></div><div class="info-2"><div class="info-item-1">DPD 在 RadSec 里的等价物是 Status-Server；开它就有保活&#x2F;判死能力。动态发现优先用 SRV 就能跑，NAPTR 是“SRV 的上一层”，需要时再加。最小可行：本机起个 dnsmasq 写 SRV 记录 → radsecproxy 用 DynamicLookupCommand srv:_radsec._tcp → StatusServer auto。生产化关键：证书主机名匹配（CN&#x2F;SAN）、阻塞首包（BlockingStartup）、避免重复 include。  0️⃣ 背景：为什么要把 DPD 和动态发现绑在一起？RADIUS&#x2F;UDP 天生“无连接”，上游死了就换一个；而 RADIUS&#x2F;TLS（RadSec）是长连接：需要你自己探测对端（DPD）、断开重连，并且当你启用了动态对端发现（DNS NAPTR&#x2F;SRV）时，上游 peer 可能随时间变化。   所以要做的是：  用 DNS（NAPTR&#x2F;SRV）发现谁可用；   用 Status-Server 做 DPD，发现谁“死了”；   配合...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2025/10/28/radsecproxy-dpd-dynamic-md/" title="用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-10-28</div><div class="info-item-2">用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」</div></div><div class="info-2"><div class="info-item-1">DPD 在 RadSec 里的等价物是 Status-Server；开它就有保活&#x2F;判死能力。动态发现优先用 SRV 就能跑，NAPTR 是“SRV 的上一层”，需要时再加。最小可行：本机起个 dnsmasq 写 SRV 记录 → radsecproxy 用 DynamicLookupCommand srv:_radsec._tcp → StatusServer auto。生产化关键：证书主机名匹配（CN&#x2F;SAN）、阻塞首包（BlockingStartup）、避免重复 include。  0️⃣ 背景：为什么要把 DPD 和动态发现绑在一起？RADIUS&#x2F;UDP 天生“无连接”，上游死了就换一个；而 RADIUS&#x2F;TLS（RadSec）是长连接：需要你自己探测对端（DPD）、断开重连，并且当你启用了动态对端发现（DNS NAPTR&#x2F;SRV）时，上游 peer 可能随时间变化。   所以要做的是：  用 DNS（NAPTR&#x2F;SRV）发现谁可用；   用 Status-Server 做 DPD，发现谁“死了”；   配合...</div></div></div></a><a class="pagination-related" href="/2025/10/27/freeradius-upgrade-md/" title="用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-10-27</div><div class="info-item-2">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</div></div><div class="info-2"><div class="info-item-1">如果你的目标是用新版（3.2.7）彻底替换旧版（3.0.26），而不是两个版本同时运行，那么直接关掉旧版，让新版接管，是最简单高效的办法。这篇文章讲的是纯升级：旧版下线，新版接管标准端口。  为什么要关掉旧版？ 避免端口冲突：新版直接用标准端口 1812&#x2F;1813，无需用其他临时端口。   管理更简单：只保留一个 systemd 服务，避免混淆。   配置更干净：没有冗余服务文件，没有多余进程。   四步完成 FreeRADIUS 版本替换🧩 第 1 步：彻底停止并禁用旧版服务确保旧版不会再运行，也不会开机自启： 12345# 停止旧版sudo systemctl stop freeradius# 禁用旧版sudo systemctl disable freeradius   如果你的旧版服务名不是 freeradius，请替换成正确的名字。   ⚙️ 第 2 步：恢复新版的标准端口（推荐）如果你之前为了共存改过端口，现在可以改回： 1sudo nano /usr/local/etc/raddb/radiusd.conf  找到： 1port = 2812   #...</div></div></div></a><a class="pagination-related" href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/" title="RadSecProxy 配置与调试笔记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-06-12</div><div class="info-item-2">RadSecProxy 配置与调试笔记</div></div><div class="info-2"><div class="info-item-1">RadSecProxy 是一个开源的 RADIUS 中继工具，支持 UDP、TCP、TLS（即 RadSec），非常适合搭建中间代理、调试 TLS 安全连接等场景。本文记录了我在构建以下实验拓扑时的完整配置流程与踩坑记录。 🧭 实验拓扑1234567proxy1（FreeRADIUS，UDP，192.168.8.195）⇩ UDP（传统 RADIUS）proxy2（RadSecProxy，192.168.8.231）⇩ TLS（RadSec）proxy3（FreeRADIUS，TLS监听，192.168.8.228）  🛠️ RadSecProxy 配置（proxy2）路径：/usr/local/etc/radsecproxy.conf 123456789101112131415161718192021222324tls myradsec &#123;    CACertificateFile /etc/radsecproxy/certs/ca.pem    CertificateFile /etc/radsecproxy/certs/client.pem   ...</div></div></div></a><a class="pagination-related" href="/2025/03/04/ubuntu-setup-freeradius-eap-tls-test/" title="Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-03-04</div><div class="info-item-2">Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试</div></div><div class="info-2"><div class="info-item-1">Ubuntu 22.04 搭建 FreeRADIUS 并使用 EAP-TLS 进行本地测试（eapol_test）在本教程中，我们将使用 Ubuntu 22.04 搭建 FreeRADIUS 服务器，并使用 EAP-TLS 进行本地测试。测试工具选用 eapol_test（WPA Supplicant 的测试工具）。  1️⃣ 安装 FreeRADIUS 服务器首先，确保你的系统是 Ubuntu 22.04（其他的也可以） 并更新软件包： 1sudo apt update &amp;&amp; sudo apt upgrade -y  然后，安装 FreeRADIUS： 1sudo apt install freeradius -y 安装完成后，检查 FreeRADIUS 是否正确安装： 1freeradius -v 输出类似： 1FreeRADIUS Version 3.0.26   2️⃣ 生成 EAP-TLS 认证所需的证书FreeRADIUS 需要 CA（根证书）、服务器证书 和 客户端证书 来进行 EAP-TLS 认证。我们可以使用 FreeRADIUS 提供的...</div></div></div></a><a class="pagination-related" href="/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/" title="FreeRADIUS 3.0.26 → 3.2.7 升级实战手册"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-06-07</div><div class="info-item-2">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册</div></div><div class="info-2"><div class="info-item-1">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册适用环境：Ubuntu 22.04 LTS  目标说明  在不影响现有系统的前提下，测试和部署 FreeRADIUS 的新版本。 不卸载旧版，以便随时回滚或对比测试。 从源码编译新版以启用所有需要的功能模块，例如 Redis 和 SQL。 使新版能通过 systemd 管理，实现自动启动。    0. 准备工作在编译前需安装基础编译工具和模块依赖。 1234sudo apt updatesudo apt install -y build-essential git pkg-config \  libssl-dev libtalloc-dev libpcap-dev libsystemd-dev \  libjson-c-dev libhiredis-dev libpq-dev  说明：  libhiredis-dev 是 Redis 支持模块 rlm_redis 的依赖。 libpq-dev 是 PostgreSQL 支持模块 rlm_sql_postgresql 的依赖。   1. 暂停旧版 FreeRADIUS...</div></div></div></a></div></div><hr class="custom-hr"/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> Comments</span></div></div><div class="comment-wrap"><div><div id="giscus-wrap"></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Yxr</div><div class="author-info-description">欢迎来我这</div><div class="site-data"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">17</div></a><a href="/tags/"><div class="headline">Tags</div><div class="length-num">44</div></a><a href="/categories/"><div class="headline">Categories</div><div class="length-num">15</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/yangxir"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/yangxir" target="_blank" title="GitHub"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yangxirui9@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a><a class="social-icon" href="https://x.com/Yang_xxr" target="_blank" title="Twitter"><i class="fab fa-twitter" style="color: #1DA1F2;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>Announcement</span></div><div class="announcement_content">情報は武器、WiFiは俺の魂… 一个小小的喜欢wifi的人</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text">📁 一、目录结构：模块化配置</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">2.</span> <span class="toc-text">✉️ 二、rewrite 模块的用途</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">3.</span> <span class="toc-text">⚙️ 三、rewrite 文件示例</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">4.</span> <span class="toc-text">🧠 四、rewriteIn 与 rewriteOut 的区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">5.</span> <span class="toc-text">🔧 五、rewrite 模块官方指令一览（2025 最新版）</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">6.</span> <span class="toc-text">🧩 六、rewrite 的限制与调试技巧</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">7.</span> <span class="toc-text">💬 七、实践经验与建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">8.</span> <span class="toc-text">✨ 八、总结</span></a></li><li class="toc-item toc-level-2"><a class="toc-link"><span class="toc-number">9.</span> <span class="toc-text">📌 参考资料</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Posts</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/10/28/radsecproxy-dpd-dynamic-md/" title="用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」">用一天跑通：给 radsecproxy 加上「动态发现 + DPD（Status-Server）」</a><time datetime="2025-10-27T15:00:00.000Z" title="Created 2025-10-28 00:00:00">2025-10-28</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/10/27/radsecproxy-rewrite-md/" title="RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践">RadSecProxy 实战笔记：rewrite 模块详解与分目录结构实践</a><time datetime="2025-10-27T14:00:00.000Z" title="Created 2025-10-27 23:00:00">2025-10-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/10/27/freeradius-upgrade-md/" title="用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案">用 FreeRADIUS 3.2.7 替换旧版 3.0.26：最干净的升级方案</a><time datetime="2025-10-27T13:00:00.000Z" title="Created 2025-10-27 22:00:00">2025-10-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/06/12/RadSecProxy-%E9%85%8D%E7%BD%AE%E4%B8%8E%E8%B0%83%E8%AF%95%E7%AC%94%E8%AE%B0/" title="RadSecProxy 配置与调试笔记">RadSecProxy 配置与调试笔记</a><time datetime="2025-06-12T11:00:00.000Z" title="Created 2025-06-12 20:00:00">2025-06-12</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/06/07/freeradius-upgrade-3-0-26-to-3-2-7/" title="FreeRADIUS 3.0.26 → 3.2.7 升级实战手册">FreeRADIUS 3.0.26 → 3.2.7 升级实战手册</a><time datetime="2025-06-07T12:00:00.000Z" title="Created 2025-06-07 21:00:00">2025-06-07</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2025 By Yxr</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.3</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="前往评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"><script>(() => {
+  const isShuoshuo = GLOBAL_CONFIG_SITE.pageType === 'shuoshuo'
+  const option = null
+
+  const getGiscusTheme = theme => theme === 'dark' ? 'dark' : 'light'
+
+  const createScriptElement = config => {
+    const ele = document.createElement('script')
+    Object.entries(config).forEach(([key, value]) => {
+      ele.setAttribute(key, value)
+    })
+    return ele
+  }
+
+  const loadGiscus = (el = document, key) => {
+    const mappingConfig = isShuoshuo
+      ? { 'data-mapping': 'specific', 'data-term': key }
+      : { 'data-mapping': (option && option['data-mapping']) || 'pathname' }
+
+    const giscusConfig = {
+      src: 'https://giscus.app/client.js',
+      'data-repo': 'yangxir/yangxir.github.io',
+      'data-repo-id': 'R_kgDON-PRXw',
+      'data-category-id': 'DIC_kwDON-PRX84CnjbM',
+      'data-theme': getGiscusTheme(document.documentElement.getAttribute('data-theme')),
+      'data-reactions-enabled': '1',
+      crossorigin: 'anonymous',
+      async: true,
+      ...option,
+      ...mappingConfig
+    }
+
+    const scriptElement = createScriptElement(giscusConfig)
+
+    el.querySelector('#giscus-wrap').appendChild(scriptElement)
+
+    if (isShuoshuo) {
+      window.shuoshuoComment.destroyGiscus = () => {
+        if (el.children.length) {
+          el.innerHTML = ''
+          el.classList.add('no-comment')
+        }
+      }
+    }
+  }
+
+  const changeGiscusTheme = theme => {
+    const iframe = document.querySelector('#giscus-wrap iframe')
+    if (iframe) {
+      const message = {
+        giscus: {
+          setConfig: {
+            theme: getGiscusTheme(theme)
+          }
+        }
+      }
+      iframe.contentWindow.postMessage(message, 'https://giscus.app')
+    }
+  }
+
+  btf.addGlobalFn('themeChange', changeGiscusTheme, 'giscus')
+
+  if (isShuoshuo) {
+    'Giscus' === 'Giscus'
+      ? window.shuoshuoComment = { loadComment: loadGiscus }
+      : window.loadOtherComment = loadGiscus
+    return
+  }
+
+  if ('Giscus' === 'Giscus' || !false) {
+    if (false) btf.loadComment(document.getElementById('giscus-wrap'), loadGiscus)
+    else loadGiscus()
+  } else {
+    window.loadOtherComment = loadGiscus
+  }
+})()</script></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
